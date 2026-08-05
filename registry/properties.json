@@ -1,0 +1,43 @@
+{
+  "$schema": "./properties.schema.json",
+  "properties": [
+    {
+      "name": "affinedrift-website",
+      "display_name": "AffineDrift website",
+      "kind": "pages-site",
+      "source": {
+        "repo": "D-sorganization/AffineDrift",
+        "path": "/"
+      },
+      "public_url": "https://www.affinedrift.com/",
+      "deploy": {
+        "mechanism": "github-actions",
+        "workflow": ".github/workflows/deploy-website.yml",
+        "pages_build_type": "workflow",
+        "custom_domain": "www.affinedrift.com"
+      },
+      "sync_procedure": "None needed — the public repo is the canonical source. Merge to main triggers the Quarto build and Pages deploy.",
+      "owner_repo": "D-sorganization/AffineDrift",
+      "notes": "Quarto site. Apex domain affinedrift.com redirects to www; HTTPS certificate covers both."
+    },
+    {
+      "name": "rate-of-closure-explorer",
+      "display_name": "Rate of Closure Impact Explorer",
+      "kind": "pages-mirror",
+      "source": {
+        "repo": "D-sorganization/Tools",
+        "path": "src/rate_of_closure/web"
+      },
+      "public_url": "https://d-sorganization.github.io/rate-of-closure-explorer/",
+      "deploy": {
+        "mechanism": "github-actions",
+        "workflow": ".github/workflows/deploy-pages.yml",
+        "pages_build_type": "workflow",
+        "custom_domain": null
+      },
+      "sync_procedure": "After a Tools merge touching src/rate_of_closure/web, run scripts/sync-from-tools.ps1 -ToolsPath <Tools checkout> in the mirror repo, review git status, commit, and push; the Pages workflow rebuilds and redeploys.",
+      "owner_repo": "D-sorganization/rate-of-closure-explorer",
+      "notes": "Canonical TypeScript model in Tools is pinned test-for-test against the Python implementation (parity governance: AffineDrift #3777). The mirror repo D-sorganization/rate-of-closure-explorer holds the deployable copy and the sync script."
+    }
+  ]
+}

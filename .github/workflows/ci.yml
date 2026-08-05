@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main, import]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gate:
+    name: quality-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate registry against schema
+        run: |
+          python -m pip install --quiet jsonschema
+          python - <<'EOF'
+          import json
+          from jsonschema import Draft202012Validator
+
+          with open("registry/properties.schema.json") as f:
+              schema = json.load(f)
+          Draft202012Validator.check_schema(schema)
+
+          with open("registry/properties.json") as f:
+              registry = json.load(f)
+
+          errors = sorted(
+              Draft202012Validator(schema).iter_errors(registry),
+              key=lambda e: list(e.absolute_path),
+          )
+          for err in errors:
+              path = "/".join(str(p) for p in err.absolute_path) or "<root>"
+              print(f"::error::{path}: {err.message}")
+          if errors:
+              raise SystemExit(1)
+
+          names = [p["name"] for p in registry["properties"]]
+          if len(names) != len(set(names)):
+              raise SystemExit("duplicate property names")
+          print(f"registry OK: {len(names)} properties: {', '.join(names)}")
+          EOF
+
+      - name: Link-check docs and registry URLs
+        run: |
+          set -eu
+          python - <<'EOF' > urls.txt
+          import json, re, pathlib
+
+          urls = set()
+          reg = json.loads(pathlib.Path("registry/properties.json").read_text())
+          for prop in reg["properties"]:
+              urls.add(prop["public_url"])
+          pattern = re.compile(r"https?://[^\s)>\"\]]+")
+          for md in list(pathlib.Path("docs").glob("*.md")) + [pathlib.Path("README.md")]:
+              urls.update(m.rstrip(".,") for m in pattern.findall(md.read_text()))
+          print("\n".join(sorted(urls)))
+          EOF
+          echo "Checking $(wc -l < urls.txt) URLs"
+          fail=0
+          while IFS= read -r url; do
+            code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 20 \
+              -A "Mozilla/5.0 (compatible; public-web-management-ci)" "$url" || echo 000)
+            echo "$code  $url"
+            case "$code" in
+              2*|3*) ;;
+              *) fail=1 ;;
+            esac
+          done < urls.txt
+          exit $fail
