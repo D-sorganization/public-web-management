@@ -57,7 +57,7 @@ jobs:
           reg = json.loads(pathlib.Path("registry/properties.json").read_text())
           for prop in reg["properties"]:
               urls.add(prop["public_url"])
-          pattern = re.compile(r"https?://[^\s)>\"\]]+")
+          pattern = re.compile(r"https?://[A-Za-z0-9][^\s)>\"'`\]]*")
           for md in list(pathlib.Path("docs").glob("*.md")) + [pathlib.Path("README.md")]:
               urls.update(m.rstrip(".,") for m in pattern.findall(md.read_text()))
           print("\n".join(sorted(urls)))
